@@ -1,9 +1,22 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, Wallet, Calendar, Receipt } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { TrendingUp, Wallet, Calendar, Receipt } from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Expense {
   id: string;
@@ -31,50 +44,22 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchExpenses();
+    void fetchExpenses();
   }, []);
 
-  const fetchExpenses = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("expenses")
-      .select(`
-        id,
-        amount,
-        date,
-        category:categories (
-          name,
-          color,
-          icon
-        )
-      `)
-      .eq("user_id", user.id)
-      .order("date", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching expenses:", error);
-      return;
-    }
-
-    if (data) {
-      setExpenses(data as any);
-      calculateTotals(data as any);
-    }
-    setLoading(false);
-  };
-
-  const calculateTotals = (expenseData: Expense[]) => {
+  const calculateTotals = useCallback((expenseData: Expense[]) => {
     // Total expenses
-    const total = expenseData.reduce((sum, expense) => sum + Number(expense.amount), 0);
+    const total = expenseData.reduce(
+      (sum, expense) => sum + Number(expense.amount),
+      0
+    );
     setTotalExpenses(total);
 
     // Monthly expenses
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
-    
+
     const monthlyTotal = expenseData
       .filter(expense => {
         const expenseDate = new Date(expense.date);
@@ -85,7 +70,7 @@ export function Dashboard() {
 
     // Category totals
     const categoryMap = new Map<string, CategoryTotal>();
-    
+
     expenseData.forEach(expense => {
       const categoryName = expense.category.name;
       if (categoryMap.has(categoryName)) {
@@ -102,12 +87,47 @@ export function Dashboard() {
     });
 
     setCategoryTotals(Array.from(categoryMap.values()));
-  };
+  }, []);
+
+  const fetchExpenses = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(
+        `
+        id,
+        amount,
+        date,
+        category:categories (
+          name,
+          color,
+          icon
+        )
+      `
+      )
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching expenses:', error);
+      return;
+    }
+
+    if (data) {
+      setExpenses(data as Expense[]);
+      calculateTotals(data as Expense[]);
+    }
+    setLoading(false);
+  }, [calculateTotals]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
     }).format(amount);
   };
 
@@ -124,11 +144,15 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Despesas</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Despesas
+            </CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold animate-count">{formatCurrency(totalExpenses)}</div>
+            <div className="text-2xl font-bold animate-count">
+              {formatCurrency(totalExpenses)}
+            </div>
             <p className="text-xs text-muted-foreground">Total geral</p>
           </CardContent>
         </Card>
@@ -139,8 +163,12 @@ export function Dashboard() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold animate-count">{formatCurrency(monthlyExpenses)}</div>
-            <p className="text-xs text-muted-foreground">{format(new Date(), "MMMM yyyy")}</p>
+            <div className="text-2xl font-bold animate-count">
+              {formatCurrency(monthlyExpenses)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {format(new Date(), 'MMMM yyyy', { locale: ptBR })}
+            </p>
           </CardContent>
         </Card>
 
@@ -150,7 +178,9 @@ export function Dashboard() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold animate-count">{expenses.length}</div>
+            <div className="text-2xl font-bold animate-count">
+              {expenses.length}
+            </div>
             <p className="text-xs text-muted-foreground">Total registrado</p>
           </CardContent>
         </Card>
@@ -162,7 +192,9 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold animate-count">
-              {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : "$0.00"}
+              {expenses.length > 0
+                ? formatCurrency(totalExpenses / expenses.length)
+                : 'R$ 0,00'}
             </div>
             <p className="text-xs text-muted-foreground">Por transação</p>
           </CardContent>
@@ -183,7 +215,9 @@ export function Dashboard() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -192,7 +226,9 @@ export function Dashboard() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -214,7 +250,9 @@ export function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
                   <Bar dataKey="value" fill="hsl(var(--primary))" />
                 </BarChart>
               </ResponsiveContainer>
@@ -233,14 +271,21 @@ export function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {categoryTotals.map((category) => (
-              <div key={category.name} className="flex items-center justify-between">
+            {categoryTotals.map(category => (
+              <div
+                key={category.name}
+                className="flex items-center justify-between"
+              >
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">{category.icon}</span>
                   <div>
                     <p className="font-medium">{category.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {expenses.filter(e => e.category.name === category.name).length} transações
+                      {
+                        expenses.filter(e => e.category.name === category.name)
+                          .length
+                      }{' '}
+                      transações
                     </p>
                   </div>
                 </div>

@@ -8,36 +8,44 @@ import { useToast } from "@/hooks/use-toast";
 import { Mail, Lock, User, Loader2 } from "lucide-react";
 import { z } from "zod";
 
-const authSchema = z.object({
-  email: z.string().email("Por favor, insira um email válido"),
-  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-  fullName: z.string().min(2, "O nome deve ter pelo menos 2 caracteres").optional(),
+const loginSchema = z.object({
+  email: z.string().email('Por favor, insira um e-mail válido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const registerSchema = loginSchema.extend({
+  fullName: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
+});
+
+type AuthFormData = z.infer<typeof registerSchema>;
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<AuthFormData>({
-    email: "",
-    password: "",
-    fullName: "",
+    email: '',
+    password: '',
+    fullName: '',
   });
   const [errors, setErrors] = useState<Partial<AuthFormData>>({});
-  
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const validateForm = (): boolean => {
     try {
-      authSchema.parse(formData);
+      const schema = isLogin ? loginSchema : registerSchema;
+      const dataToValidate = isLogin
+        ? { email: formData.email, password: formData.password }
+        : formData;
+
+      schema.parse(dataToValidate);
       setErrors({});
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Partial<AuthFormData> = {};
-        error.errors.forEach((err) => {
+        error.errors.forEach(err => {
           if (err.path[0]) {
             fieldErrors[err.path[0] as keyof AuthFormData] = err.message;
           }
@@ -50,9 +58,9 @@ export function AuthForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
 
     try {
@@ -61,27 +69,29 @@ export function AuthForm() {
           email: formData.email,
           password: formData.password,
         });
-        
+
         if (error) {
           // Trata erros específicos
-          if (error.message.includes("Invalid login credentials")) {
-            throw new Error("Email ou senha incorretos");
-          } else if (error.message.includes("Email not confirmed")) {
-            throw new Error("Por favor, confirme seu email antes de fazer login");
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('E-mail ou senha incorretos');
+          } else if (error.message.includes('Email not confirmed')) {
+            throw new Error(
+              'Por favor, confirme seu e-mail antes de fazer login'
+            );
           }
           throw error;
         }
-        
+
         // Verifica se o login foi bem-sucedido
         if (data?.user) {
           toast({
-            title: "Bem-vindo de volta!",
-            description: "Login realizado com sucesso.",
+            title: 'Bem-vindo de volta!',
+            description: 'Login realizado com sucesso.',
           });
-          
+
           // Pequeno delay para garantir que a sessão seja estabelecida
           setTimeout(() => {
-            navigate("/app");
+            navigate('/app');
           }, 100);
         }
       } else {
@@ -95,25 +105,31 @@ export function AuthForm() {
             },
           },
         });
-        
+
         if (error) {
-          if (error.message.includes("User already registered")) {
-            throw new Error("Este email já está cadastrado. Faça login em vez disso.");
+          if (error.message.includes('User already registered')) {
+            throw new Error(
+              'Este e-mail já está cadastrado. Faça login em vez disso.'
+            );
           }
           throw error;
         }
-        
+
         toast({
-          title: "Conta criada!",
-          description: "Por favor, verifique seu email para confirmar sua conta.",
+          title: 'Conta criada!',
+          description:
+            'Por favor, verifique seu e-mail para confirmar sua conta.',
         });
       }
-    } catch (error: any) {
-      console.error("Erro de autenticação:", error);
+    } catch (error: unknown) {
+      console.error('Erro de autenticação:', error);
       toast({
-        title: "Erro de Autenticação",
-        description: error.message || "Ocorreu um erro durante a autenticação",
-        variant: "destructive",
+        title: 'Erro de Autenticação',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Ocorreu um erro durante a autenticação.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -125,12 +141,12 @@ export function AuthForm() {
       <Card className="w-full max-w-md glass">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {isLogin ? "Bem-vindo de Volta" : "Criar Conta"}
+            {isLogin ? 'Bem-vindo de Volta' : 'Criar Conta'}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin 
-              ? "Digite suas credenciais para acessar suas finanças" 
-              : "Comece a gerenciar suas despesas hoje"}
+            {isLogin
+              ? 'Digite suas credenciais para acessar suas finanças'
+              : 'Comece a gerenciar suas despesas hoje'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,9 +156,11 @@ export function AuthForm() {
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Nome Completo"
+                    placeholder="Nome completo"
                     value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    onChange={e =>
+                      setFormData({ ...formData, fullName: e.target.value })
+                    }
                     className="pl-10"
                     disabled={loading}
                   />
@@ -152,15 +170,17 @@ export function AuthForm() {
                 )}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder="E-mail"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="pl-10"
                   disabled={loading}
                   required
@@ -170,7 +190,7 @@ export function AuthForm() {
                 <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -178,7 +198,9 @@ export function AuthForm() {
                   type="password"
                   placeholder="Senha"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   className="pl-10"
                   disabled={loading}
                   required
@@ -188,23 +210,25 @@ export function AuthForm() {
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
               disabled={loading}
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? "Entrando..." : "Criando conta..."}
+                  {isLogin ? 'Entrando...' : 'Criando conta...'}
                 </>
+              ) : isLogin ? (
+                'Entrar'
               ) : (
-                isLogin ? "Entrar" : "Criar Conta"
+                'Criar Conta'
               )}
             </Button>
           </form>
-          
+
           <div className="mt-6 text-center">
             <button
               type="button"
@@ -212,9 +236,9 @@ export function AuthForm() {
               className="text-sm text-muted-foreground hover:text-accent transition-colors"
               disabled={loading}
             >
-              {isLogin 
-                ? "Não tem uma conta? Criar conta" 
-                : "Já tem uma conta? Entrar"}
+              {isLogin
+                ? 'Não tem uma conta? Crie uma agora'
+                : 'Já tem uma conta? Faça login'}
             </button>
           </div>
         </CardContent>

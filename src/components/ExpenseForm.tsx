@@ -11,15 +11,25 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { z } from "zod";
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { z } from 'zod';
 
 const expenseSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
-  amount: z.number().positive("Amount must be positive").max(999999.99, "Amount is too large"),
-  categoryId: z.string().uuid("Please select a category"),
+  title: z
+    .string()
+    .min(1, 'O título é obrigatório')
+    .max(100, 'O título deve ter menos de 100 caracteres'),
+  amount: z
+    .number()
+    .positive('O valor deve ser positivo')
+    .max(999999.99, 'O valor é muito grande'),
+  categoryId: z.string().uuid('Selecione uma categoria'),
   date: z.date(),
-  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
+  notes: z
+    .string()
+    .max(500, 'As notas devem ter menos de 500 caracteres')
+    .optional(),
 });
 
 interface Category {
@@ -34,15 +44,15 @@ interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState<Date>(new Date());
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,17 +60,19 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
   }, []);
 
   const fetchCategories = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("categories")
-      .select("*")
+      .from('categories')
+      .select('*')
       .or(`user_id.eq.${user.id},is_default.eq.true`)
-      .order("name");
+      .order('name');
 
     if (error) {
-      console.error("Error fetching categories:", error);
+      console.error('Error fetching categories:', error);
       return;
     }
 
@@ -81,7 +93,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
     } catch (error) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
-        error.errors.forEach((err) => {
+        error.errors.forEach(err => {
           if (err.path[0]) {
             fieldErrors[err.path[0].toString()] = err.message;
           }
@@ -94,55 +106,57 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       toast({
-        title: "Error",
-        description: "You must be logged in to add expenses",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Você precisa estar logado para adicionar despesas',
+        variant: 'destructive',
       });
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.from("expenses").insert({
+    const { error } = await supabase.from('expenses').insert({
       user_id: user.id,
       title,
       amount: parseFloat(amount),
       category_id: categoryId,
-      date: format(date, "yyyy-MM-dd"),
+      date: format(date, 'yyyy-MM-dd'),
       notes: notes || null,
     });
 
     if (error) {
       toast({
-        title: "Error",
-        description: "Failed to add expense. Please try again.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Falha ao adicionar despesa. Tente novamente.',
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Success",
-        description: "Expense added successfully!",
+        title: 'Sucesso',
+        description: 'Despesa adicionada com sucesso!',
       });
-      
+
       // Reset form
-      setTitle("");
-      setAmount("");
-      setCategoryId("");
+      setTitle('');
+      setAmount('');
+      setCategoryId('');
       setDate(new Date());
-      setNotes("");
-      
+      setNotes('');
+
       if (onSuccess) {
         onSuccess();
       }
     }
-    
+
     setLoading(false);
   };
 
@@ -151,18 +165,18 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Plus className="h-5 w-5" />
-          Add New Expense
+          Adicionar Nova Despesa
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
+            <Label htmlFor="title">Título *</Label>
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Grocery shopping"
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Ex.: Compras no supermercado"
               disabled={loading}
             />
             {errors.title && (
@@ -172,14 +186,14 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount *</Label>
+              <Label htmlFor="amount">Valor *</Label>
               <Input
                 id="amount"
                 type="number"
                 step="0.01"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                onChange={e => setAmount(e.target.value)}
+                placeholder="0,00"
                 disabled={loading}
               />
               {errors.amount && (
@@ -188,13 +202,17 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select value={categoryId} onValueChange={setCategoryId} disabled={loading}>
+              <Label htmlFor="category">Categoria *</Label>
+              <Select
+                value={categoryId}
+                onValueChange={setCategoryId}
+                disabled={loading}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
+                  {categories.map(category => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
                         <span>{category.icon}</span>
@@ -211,26 +229,30 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Date *</Label>
+            <Label>Data *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
+                    'w-full justify-start text-left font-normal',
+                    !date && 'text-muted-foreground'
                   )}
                   disabled={loading}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  {date ? (
+                    format(date, 'PPP', { locale: ptBR })
+                  ) : (
+                    <span>Escolha uma data</span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  onSelect={newDate => newDate && setDate(newDate)}
                   initialFocus
                   className="pointer-events-auto"
                 />
@@ -242,12 +264,12 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Label htmlFor="notes">Notas (Opcional)</Label>
             <Textarea
               id="notes"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any additional details..."
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Adicione detalhes adicionais..."
               rows={3}
               disabled={loading}
             />
@@ -256,18 +278,18 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
             )}
           </div>
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity"
             disabled={loading}
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding Expense...
+                Adicionando despesa...
               </>
             ) : (
-              "Add Expense"
+              'Adicionar despesa'
             )}
           </Button>
         </form>
