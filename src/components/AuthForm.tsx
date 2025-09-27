@@ -57,32 +57,51 @@ export function AuthForm() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
         
-        if (error) throw error;
+        if (error) {
+          // Trata erros específicos
+          if (error.message.includes("Invalid login credentials")) {
+            throw new Error("Email ou senha incorretos");
+          } else if (error.message.includes("Email not confirmed")) {
+            throw new Error("Por favor, confirme seu email antes de fazer login");
+          }
+          throw error;
+        }
         
-        toast({
-          title: "Bem-vindo de volta!",
-          description: "Login realizado com sucesso.",
-        });
-        
-        navigate("/app");
+        // Verifica se o login foi bem-sucedido
+        if (data?.user) {
+          toast({
+            title: "Bem-vindo de volta!",
+            description: "Login realizado com sucesso.",
+          });
+          
+          // Pequeno delay para garantir que a sessão seja estabelecida
+          setTimeout(() => {
+            navigate("/app");
+          }, 100);
+        }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/app`,
             data: {
               full_name: formData.fullName,
             },
           },
         });
         
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes("User already registered")) {
+            throw new Error("Este email já está cadastrado. Faça login em vez disso.");
+          }
+          throw error;
+        }
         
         toast({
           title: "Conta criada!",
@@ -90,6 +109,7 @@ export function AuthForm() {
         });
       }
     } catch (error: any) {
+      console.error("Erro de autenticação:", error);
       toast({
         title: "Erro de Autenticação",
         description: error.message || "Ocorreu um erro durante a autenticação",
