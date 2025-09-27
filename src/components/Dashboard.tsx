@@ -105,9 +105,9 @@ export function Dashboard() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("pt-BR", {
       style: "currency",
-      currency: "USD",
+      currency: "BRL",
     }).format(amount);
   };
 
@@ -124,18 +124,18 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Despesas</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold animate-count">{formatCurrency(totalExpenses)}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs text-muted-foreground">Total geral</p>
           </CardContent>
         </Card>
 
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <CardTitle className="text-sm font-medium">Este Mês</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -146,25 +146,25 @@ export function Dashboard() {
 
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+            <CardTitle className="text-sm font-medium">Transações</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold animate-count">{expenses.length}</div>
-            <p className="text-xs text-muted-foreground">Total recorded</p>
+            <p className="text-xs text-muted-foreground">Total registrado</p>
           </CardContent>
         </Card>
 
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average</CardTitle>
+            <CardTitle className="text-sm font-medium">Média</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold animate-count">
               {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : "$0.00"}
             </div>
-            <p className="text-xs text-muted-foreground">Per transaction</p>
+            <p className="text-xs text-muted-foreground">Por transação</p>
           </CardContent>
         </Card>
       </div>
@@ -172,7 +172,7 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="card-hover">
           <CardHeader>
-            <CardTitle>Expenses by Category</CardTitle>
+            <CardTitle>Despesas por Categoria</CardTitle>
           </CardHeader>
           <CardContent>
             {categoryTotals.length > 0 ? (
@@ -197,7 +197,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No expenses recorded yet
+                Nenhuma despesa registrada ainda
               </div>
             )}
           </CardContent>
@@ -205,7 +205,7 @@ export function Dashboard() {
 
         <Card className="card-hover">
           <CardHeader>
-            <CardTitle>Top Categories</CardTitle>
+            <CardTitle>Principais Categorias</CardTitle>
           </CardHeader>
           <CardContent>
             {categoryTotals.length > 0 ? (
@@ -220,7 +220,7 @@ export function Dashboard() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No expenses recorded yet
+                Nenhuma despesa registrada ainda
               </div>
             )}
           </CardContent>
@@ -229,7 +229,7 @@ export function Dashboard() {
 
       <Card className="card-hover">
         <CardHeader>
-          <CardTitle>Category Breakdown</CardTitle>
+          <CardTitle>Detalhamento por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -240,7 +240,7 @@ export function Dashboard() {
                   <div>
                     <p className="font-medium">{category.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {expenses.filter(e => e.category.name === category.name).length} transactions
+                      {expenses.filter(e => e.category.name === category.name).length} transações
                     </p>
                   </div>
                 </div>
@@ -254,7 +254,7 @@ export function Dashboard() {
             ))}
             {categoryTotals.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
-                Start adding expenses to see your spending breakdown
+                Comece a adicionar despesas para ver seu resumo de gastos
               </p>
             )}
           </div>

@@ -70,7 +70,7 @@ const Index = () => {
             <span className="text-sm text-muted-foreground">{user.email}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              Sair
             </Button>
           </div>
         </div>
@@ -81,19 +81,19 @@ const Index = () => {
           <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto glass">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <PieChart className="h-4 w-4" />
-              Dashboard
+              Painel
             </TabsTrigger>
             <TabsTrigger value="add" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              Add
+              Adicionar
             </TabsTrigger>
             <TabsTrigger value="expenses" className="flex items-center gap-2">
               <Receipt className="h-4 w-4" />
-              Expenses
+              Despesas
             </TabsTrigger>
             <TabsTrigger value="categories" className="flex items-center gap-2">
               <Tags className="h-4 w-4" />
-              Categories
+              Categorias
             </TabsTrigger>
           </TabsList>
 

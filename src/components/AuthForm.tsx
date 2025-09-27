@@ -9,9 +9,9 @@ import { Mail, Lock, User, Loader2 } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  fullName: z.string().min(2, "Name must be at least 2 characters").optional(),
+  email: z.string().email("Por favor, insira um email válido"),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
+  fullName: z.string().min(2, "O nome deve ter pelo menos 2 caracteres").optional(),
 });
 
 type AuthFormData = z.infer<typeof authSchema>;
@@ -65,11 +65,11 @@ export function AuthForm() {
         if (error) throw error;
         
         toast({
-          title: "Welcome back!",
-          description: "You've successfully logged in.",
+          title: "Bem-vindo de volta!",
+          description: "Login realizado com sucesso.",
         });
         
-        navigate("/");
+        navigate("/app");
       } else {
         const { error } = await supabase.auth.signUp({
           email: formData.email,
@@ -85,14 +85,14 @@ export function AuthForm() {
         if (error) throw error;
         
         toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
+          title: "Conta criada!",
+          description: "Por favor, verifique seu email para confirmar sua conta.",
         });
       }
     } catch (error: any) {
       toast({
-        title: "Authentication Error",
-        description: error.message || "An error occurred during authentication",
+        title: "Erro de Autenticação",
+        description: error.message || "Ocorreu um erro durante a autenticação",
         variant: "destructive",
       });
     } finally {
@@ -105,12 +105,12 @@ export function AuthForm() {
       <Card className="w-full max-w-md glass">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {isLogin ? "Welcome Back" : "Create Account"}
+            {isLogin ? "Bem-vindo de Volta" : "Criar Conta"}
           </CardTitle>
           <CardDescription className="text-center">
             {isLogin 
-              ? "Enter your credentials to access your finances" 
-              : "Start managing your expenses today"}
+              ? "Digite suas credenciais para acessar suas finanças" 
+              : "Comece a gerenciar suas despesas hoje"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,7 +120,7 @@ export function AuthForm() {
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Full Name"
+                    placeholder="Nome Completo"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     className="pl-10"
@@ -156,7 +156,7 @@ export function AuthForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="password"
-                  placeholder="Password"
+                  placeholder="Senha"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="pl-10"
@@ -177,10 +177,10 @@ export function AuthForm() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? "Logging in..." : "Creating account..."}
+                  {isLogin ? "Entrando..." : "Criando conta..."}
                 </>
               ) : (
-                isLogin ? "Log In" : "Sign Up"
+                isLogin ? "Entrar" : "Criar Conta"
               )}
             </Button>
           </form>
@@ -193,8 +193,8 @@ export function AuthForm() {
               disabled={loading}
             >
               {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Log in"}
+                ? "Não tem uma conta? Criar conta" 
+                : "Já tem uma conta? Entrar"}
             </button>
           </div>
         </CardContent>
