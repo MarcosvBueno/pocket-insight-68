@@ -27,9 +27,7 @@ export function useCategories() {
       const { data, error } = await supabase
         .from("categories")
         .select("id, name, color, icon, is_default")
-        // mantém compatibilidade com telas que esperam defaults visíveis
-        .or(`user_id.eq.${userId},is_default.eq.true`)
-        .order("is_default", { ascending: false })
+        .eq("user_id", userId)
         .order("name");
 
       if (error) throw error;
