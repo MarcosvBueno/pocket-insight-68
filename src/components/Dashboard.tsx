@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useMemo } from 'react';
+import { useExpenses } from '@/queries/expenses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   PieChart,
@@ -37,92 +37,43 @@ interface CategoryTotal {
 }
 
 export function Dashboard() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [monthlyExpenses, setMonthlyExpenses] = useState(0);
-  const [categoryTotals, setCategoryTotals] = useState<CategoryTotal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: expenses = [], isLoading: loading } = useExpenses();
 
-  useEffect(() => {
-    void fetchExpenses();
-  }, []);
+  const { totalExpenses, monthlyExpenses, categoryTotals } = useMemo(() => {
+    const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-  const calculateTotals = useCallback((expenseData: Expense[]) => {
-    // Total expenses
-    const total = expenseData.reduce(
-      (sum, expense) => sum + Number(expense.amount),
-      0
-    );
-    setTotalExpenses(total);
-
-    // Monthly expenses
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
-
-    const monthlyTotal = expenseData
-      .filter(expense => {
-        const expenseDate = new Date(expense.date);
-        return expenseDate >= monthStart && expenseDate <= monthEnd;
+    const monthlyTotal = expenses
+      .filter((e) => {
+        const d = new Date(e.date);
+        return d >= monthStart && d <= monthEnd;
       })
-      .reduce((sum, expense) => sum + Number(expense.amount), 0);
-    setMonthlyExpenses(monthlyTotal);
+      .reduce((sum, e) => sum + Number(e.amount), 0);
 
-    // Category totals
     const categoryMap = new Map<string, CategoryTotal>();
-
-    expenseData.forEach(expense => {
-      const categoryName = expense.category.name;
-      if (categoryMap.has(categoryName)) {
-        const existing = categoryMap.get(categoryName)!;
-        existing.value += Number(expense.amount);
+    expenses.forEach((e) => {
+      const catName = e.category.name;
+      const existing = categoryMap.get(catName);
+      if (existing) {
+        existing.value += Number(e.amount);
       } else {
-        categoryMap.set(categoryName, {
-          name: categoryName,
-          value: Number(expense.amount),
-          color: expense.category.color,
-          icon: expense.category.icon,
+        categoryMap.set(catName, {
+          name: catName,
+          value: Number(e.amount),
+          color: e.category.color,
+          icon: e.category.icon,
         });
       }
     });
 
-    setCategoryTotals(Array.from(categoryMap.values()));
-  }, []);
-
-  const fetchExpenses = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(
-        `
-        id,
-        amount,
-        date,
-        category:categories (
-          name,
-          color,
-          icon
-        )
-      `
-      )
-      .eq('user_id', user.id)
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching expenses:', error);
-      return;
-    }
-
-    if (data) {
-      setExpenses(data as Expense[]);
-      calculateTotals(data as Expense[]);
-    }
-    setLoading(false);
-  }, [calculateTotals]);
+    return {
+      totalExpenses: total,
+      monthlyExpenses: monthlyTotal,
+      categoryTotals: Array.from(categoryMap.values()),
+    };
+  }, [expenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {

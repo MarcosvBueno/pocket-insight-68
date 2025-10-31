@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Palette, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useAddCategory, useCategories, useDeleteCategory } from "@/queries/categories";
 
 const categorySchema = z.object({
   name: z
@@ -54,7 +54,6 @@ const defaultColors = [
 ];
 
 export function CategoryManager() {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [newCategory, setNewCategory] = useState({
     name: '',
@@ -65,31 +64,9 @@ export function CategoryManager() {
   const [loading, setLoading] = useState(false);
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('is_default', { ascending: false })
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching categories:', error);
-      return;
-    }
-
-    setCategories(data || []);
-  };
+  const { data: categories = [] } = useCategories();
+  const addCategory = useAddCategory();
+  const deleteCategory = useDeleteCategory();
 
   const validateForm = (): boolean => {
     try {
@@ -114,69 +91,34 @@ export function CategoryManager() {
     if (!validateForm()) return;
 
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase.from('categories').insert({
-      user_id: user.id,
-      name: newCategory.name,
-      color: newCategory.color,
-      icon: newCategory.icon,
-      is_default: false,
-    });
-
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast({
-          title: 'Erro',
-          description: 'Já existe uma categoria com esse nome',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Erro',
-          description: 'Falha ao adicionar categoria',
-          variant: 'destructive',
-        });
-      }
-    } else {
-      toast({
-        title: 'Sucesso',
-        description: 'Categoria adicionada com sucesso',
+    try {
+      await addCategory.mutateAsync({
+        name: newCategory.name,
+        color: newCategory.color,
+        icon: newCategory.icon,
       });
+      toast({ title: 'Sucesso', description: 'Categoria adicionada com sucesso' });
       setIsOpen(false);
       setNewCategory({ name: '', color: '#3b82f6', icon: '🏷️' });
-      fetchCategories();
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message.includes('duplicate')
+        ? 'Já existe uma categoria com esse nome'
+        : 'Falha ao adicionar categoria';
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleDeleteCategory = async (id: string) => {
-    const { error } = await supabase.from('categories').delete().eq('id', id);
-
-    if (error) {
-      if (error.message.includes('violates foreign key constraint')) {
-        toast({
-          title: 'Não é possível excluir',
-          description:
-            'Esta categoria possui despesas. Exclua as despesas primeiro.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Erro',
-          description: 'Falha ao excluir categoria',
-          variant: 'destructive',
-        });
-      }
-    } else {
-      toast({
-        title: 'Sucesso',
-        description: 'Categoria excluída com sucesso',
-      });
-      fetchCategories();
+    try {
+      await deleteCategory.mutateAsync(id);
+      toast({ title: 'Sucesso', description: 'Categoria excluída com sucesso' });
+    } catch (error: unknown) {
+      const message = error instanceof Error && error.message.includes('violates foreign key constraint')
+        ? 'Esta categoria possui despesas. Exclua as despesas primeiro.'
+        : 'Falha ao excluir categoria';
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
     }
   };
 
