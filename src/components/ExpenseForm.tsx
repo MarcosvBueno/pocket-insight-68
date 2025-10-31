@@ -1,34 +1,47 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { z } from 'zod';
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { z } from "zod";
+import { useCategories } from "@/queries/categories";
+import { useAddExpense } from "@/queries/expenses";
 
 const expenseSchema = z.object({
   title: z
     .string()
-    .min(1, 'O título é obrigatório')
-    .max(100, 'O título deve ter menos de 100 caracteres'),
-  amount: z
-    .number()
-    .positive('O valor deve ser positivo')
-    .max(999999.99, 'O valor é muito grande'),
-  categoryId: z.string().uuid('Selecione uma categoria'),
+    .min(1, "O título é obrigatório")
+    .max(100, "O título deve ter menos de 100 caracteres"),
+  amount: z.coerce
+    .number({
+      invalid_type_error: "O valor deve ser um número",
+    })
+    .positive("O valor deve ser positivo")
+    .max(999999.99, "O valor é muito grande"),
+  categoryId: z.string().uuid("Selecione uma categoria"),
   date: z.date(),
   notes: z
     .string()
-    .max(500, 'As notas devem ter menos de 500 caracteres')
+    .max(500, "As notas devem ter menos de 500 caracteres")
     .optional(),
 });
 
@@ -36,7 +49,7 @@ interface Category {
   id: string;
   name: string;
   color: string;
-  icon: string;
+  icon: string | null;
 }
 
 interface ExpenseFormProps {
@@ -44,40 +57,18 @@ interface ExpenseFormProps {
 }
 
 export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [date, setDate] = useState<Date>(new Date());
-  const [notes, setNotes] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [notes, setNotes] = useState("");
+  const { data: categories = [], isLoading: loadingCategories } =
+    useCategories();
+  const addExpense = useAddExpense();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .or(`user_id.eq.${user.id},is_default.eq.true`)
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching categories:', error);
-      return;
-    }
-
-    setCategories(data || []);
-  };
 
   const validateForm = (): boolean => {
     try {
@@ -93,7 +84,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
     } catch (error) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
-        error.errors.forEach(err => {
+        error.errors.forEach((err) => {
           if (err.path[0]) {
             fieldErrors[err.path[0].toString()] = err.message;
           }
@@ -111,53 +102,33 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
 
     setLoading(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: 'Erro',
-        description: 'Você precisa estar logado para adicionar despesas',
-        variant: 'destructive',
+    try {
+      await addExpense.mutateAsync({
+        title,
+        amount: parseFloat(amount),
+        categoryId,
+        date: format(date, "yyyy-MM-dd"),
+        notes: notes || null,
       });
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.from('expenses').insert({
-      user_id: user.id,
-      title,
-      amount: parseFloat(amount),
-      category_id: categoryId,
-      date: format(date, 'yyyy-MM-dd'),
-      notes: notes || null,
-    });
-
-    if (error) {
       toast({
-        title: 'Erro',
-        description: 'Falha ao adicionar despesa. Tente novamente.',
-        variant: 'destructive',
+        title: "Sucesso",
+        description: "Despesa adicionada com sucesso!",
       });
-    } else {
-      toast({
-        title: 'Sucesso',
-        description: 'Despesa adicionada com sucesso!',
-      });
-
-      // Reset form
-      setTitle('');
-      setAmount('');
-      setCategoryId('');
+      setTitle("");
+      setAmount("");
+      setCategoryId("");
       setDate(new Date());
-      setNotes('');
-
-      if (onSuccess) {
-        onSuccess();
-      }
+      setNotes("");
+      if (onSuccess) onSuccess();
+    } catch {
+      toast({
+        title: "Erro",
+        description: "Falha ao adicionar despesa. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -175,7 +146,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
             <Input
               id="title"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex.: Compras no supermercado"
               disabled={loading}
             />
@@ -192,7 +163,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
                 type="number"
                 step="0.01"
                 value={amount}
-                onChange={e => setAmount(e.target.value)}
+                onChange={(e) => setAmount(e.target.value)}
                 placeholder="0,00"
                 disabled={loading}
               />
@@ -206,13 +177,13 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
               <Select
                 value={categoryId}
                 onValueChange={setCategoryId}
-                disabled={loading}
+                disabled={loading || loadingCategories}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(category => (
+                  {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
                         <span>{category.icon}</span>
@@ -235,14 +206,14 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
                 <Button
                   variant="outline"
                   className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !date && 'text-muted-foreground'
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
                   )}
                   disabled={loading}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? (
-                    format(date, 'PPP', { locale: ptBR })
+                    format(date, "PPP", { locale: ptBR })
                   ) : (
                     <span>Escolha uma data</span>
                   )}
@@ -252,7 +223,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={newDate => newDate && setDate(newDate)}
+                  onSelect={(newDate) => newDate && setDate(newDate)}
                   initialFocus
                   className="pointer-events-auto"
                 />
@@ -268,7 +239,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
             <Textarea
               id="notes"
               value={notes}
-              onChange={e => setNotes(e.target.value)}
+              onChange={(e) => setNotes(e.target.value)}
               placeholder="Adicione detalhes adicionais..."
               rows={3}
               disabled={loading}
@@ -289,7 +260,7 @@ export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
                 Adicionando despesa...
               </>
             ) : (
-              'Adicionar despesa'
+              "Adicionar despesa"
             )}
           </Button>
         </form>

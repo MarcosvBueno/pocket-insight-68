@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,10 @@ import { Trash2, Search, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useCategories } from '@/queries/categories';
+import { useDeleteExpense, useExpenses } from '@/queries/expenses';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/queries/keys';
 
 interface Expense {
   id: string;
@@ -40,117 +43,41 @@ interface ExpenseListProps {
 }
 
 export function ExpenseList({ refreshTrigger }: ExpenseListProps) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const { data: categories = [] } = useCategories();
+  const { data: expenses = [], isLoading: loading } = useExpenses();
+  const deleteExpense = useDeleteExpense();
+  const queryClient = useQueryClient();
 
   const { toast } = useToast();
 
   useEffect(() => {
-    void fetchExpenses();
-    void fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    filterExpenses();
-  }, []);
-
-  const fetchCategories = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('categories')
-      .select('id, name, icon')
-      .or(`user_id.eq.${user.id},is_default.eq.true`)
-      .order('name');
-
-    if (data) {
-      setCategories(data);
+    if (refreshTrigger !== undefined) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.expenses(undefined) });
     }
-  }, []);
+  }, [refreshTrigger, queryClient]);
 
-  const fetchExpenses = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(
-        `
-        id,
-        title,
-        amount,
-        date,
-        notes,
-        category:categories (
-          id,
-          name,
-          color,
-          icon
-        )
-      `
-      )
-      .eq('user_id', user.id)
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching expenses:', error);
-      return;
-    }
-
-    if (data) {
-      const expensesData = data as Expense[];
-      setExpenses(expensesData);
-      setFilteredExpenses(expensesData);
-    }
-    setLoading(false);
-  }, []);
-
-  const filterExpenses = useCallback(() => {
+  const filteredExpenses = useMemo(() => {
     let filtered = [...expenses];
-
-    // Filter by search term
     if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       filtered = filtered.filter(
-        expense =>
-          expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          expense.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+        (e) => e.title.toLowerCase().includes(q) || e.notes?.toLowerCase().includes(q)
       );
     }
-
-    // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(
-        expense => expense.category.id === selectedCategory
-      );
+      filtered = filtered.filter((e) => e.category.id === selectedCategory);
     }
-
-    setFilteredExpenses(filtered);
+    return filtered;
   }, [expenses, searchTerm, selectedCategory]);
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
-
-    if (error) {
-      toast({
-        title: 'Erro',
-        description: 'Falha ao excluir despesa',
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Sucesso',
-        description: 'Despesa excluída com sucesso',
-      });
-      fetchExpenses();
+    try {
+      await deleteExpense.mutateAsync(id);
+      toast({ title: 'Sucesso', description: 'Despesa excluída com sucesso' });
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao excluir despesa', variant: 'destructive' });
     }
   };
 
