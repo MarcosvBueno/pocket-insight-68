@@ -9,6 +9,8 @@ import { CategoryManager } from "@/components/CategoryManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, PieChart, Receipt, Tags, Plus } from "lucide-react";
 import { User, Session } from "@supabase/supabase-js";
+import { ModeToggle } from '@/components/mode-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,24 +20,24 @@ const Index = () => {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (!session) {
-          navigate("/auth");
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (!session) {
+        navigate('/auth');
       }
-    );
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (!session) {
-        navigate("/auth");
+        navigate('/auth');
       }
     });
 
@@ -44,7 +46,7 @@ const Index = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    navigate('/auth');
   };
 
   const handleExpenseAdded = () => {
@@ -61,17 +63,25 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/30 via-background to-accent/10">
-      <header className="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-50">
+      <header className="bg-background backdrop-blur-lg border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             PocketInsight
           </h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user.email}</span>
+
+            <Avatar className="rounded-lg">
+              <AvatarFallback>
+                {user.email.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Sair
             </Button>
+
+            <ModeToggle />
           </div>
         </div>
       </header>
